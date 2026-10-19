@@ -8,19 +8,20 @@ exports.loginAdmin = (req, res) => {
         return res.status(401).json({ success: false, message: 'Invalid Master Passkey' });
     }
 
-    const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '3d' });
+    const secretKey = process.env.JWT_SECRET || 'fallback_ultra_secure_jwt_token_key_2026';
+    const token = jwt.sign({ role: 'admin' }, secretKey, { expiresIn: '3d' });
 
     res.cookie('admin_session', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: true,
+        sameSite: 'none',
         maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
     });
 
     return res.json({ success: true, message: 'Authenticated successfully for 3 days' });
 };
 
-// ================= CHECK STATUS (FIXED) =================
+// ================= CHECK STATUS =================
 exports.checkStatus = (req, res) => {
     try {
         const token = req.cookies?.admin_session;
@@ -29,8 +30,8 @@ exports.checkStatus = (req, res) => {
             return res.json({ success: false, authorized: false });
         }
 
-        // Verify JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const secretKey = process.env.JWT_SECRET || 'fallback_ultra_secure_jwt_token_key_2026';
+        const decoded = jwt.verify(token, secretKey);
 
         if (decoded.role !== 'admin') {
             return res.json({ success: false, authorized: false });
@@ -38,7 +39,6 @@ exports.checkStatus = (req, res) => {
 
         return res.json({ success: true, authorized: true });
     } catch (err) {
-        // Invalid / expired token
         return res.json({ success: false, authorized: false });
     }
 };
@@ -47,13 +47,13 @@ exports.checkStatus = (req, res) => {
 exports.logoutAdmin = (req, res) => {
     res.clearCookie('admin_session', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: true,
+        sameSite: 'none',
     });
     res.json({ success: true, message: 'Logged out successfully' });
 };
 
-// ================= MIDDLEWARE (NEW — for protected routes) =================
+// ================= MIDDLEWARE =================
 exports.requireAdmin = (req, res, next) => {
     try {
         const token = req.cookies?.admin_session;
@@ -62,7 +62,8 @@ exports.requireAdmin = (req, res, next) => {
             return res.status(401).json({ success: false, message: 'Admin login required' });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const secretKey = process.env.JWT_SECRET || 'fallback_ultra_secure_jwt_token_key_2026';
+        const decoded = jwt.verify(token, secretKey);
 
         if (decoded.role !== 'admin') {
             return res.status(403).json({ success: false, message: 'Forbidden' });
